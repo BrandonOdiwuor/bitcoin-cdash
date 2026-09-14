@@ -1,0 +1,58 @@
+name: cdash-unit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"
+  push:
+    paths:
+      - "cmake/**"
+      - ".github/workflows/cdash-unit.yml"
+
+concurrency:
+  group: cdash-unit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prototype:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [unit, unit-nowallet, unit-asan]
+    env:
+      CTEST_SUBMIT_URL: ${{ vars.CTEST_SUBMIT_URL }}
+    steps:
+      - name: Checkout pipeline
+        uses: actions/checkout@v4
+
+      - name: Checkout Bitcoin Core
+        uses: actions/checkout@v4
+        with:
+          repository: bitcoin/bitcoin
+          path: bitcoin
+          fetch-depth: 0
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build g++ clang \
+            pkg-config python3 \
+            libevent-dev libboost-dev libsqlite3-dev libzmq3-dev
+
+      - name: Versions
+        run: |
+          cmake --version
+          ctest --version
+          clang --version | head -1
+
+      - name: Run dashboard
+        run: |
+          test -n "$CTEST_SUBMIT_URL"
+          BITCOIN_SOURCE_DIR="$PWD/bitcoin" \
+            ctest -S "$PWD/cmake/cdash_unit.cmake" -V \
+            -DCDASH_PROFILE=${{ matrix.profile }} \
+            -DCDASH_MODEL=Nightly \
+            -DCDASH_SUBMIT=ON \
+            -DCTEST_SUBMIT_URL="$CTEST_SUBMIT_URL"
