@@ -53,10 +53,15 @@ if(NOT _submit_url)
   set(_submit_url "http://127.0.0.1:8080/submit.php?project=core")
 endif()
 
-include(ProcessorCount)
-ProcessorCount(N)
-if(N EQUAL 0)
-  set(N 1)
+if(NOT CDASH_JOBS AND DEFINED ENV{CDASH_JOBS})
+  set(CDASH_JOBS "$ENV{CDASH_JOBS}")
+endif()
+if(NOT CDASH_JOBS)
+  include(ProcessorCount)
+  ProcessorCount(CDASH_JOBS)
+endif()
+if(NOT CDASH_JOBS OR CDASH_JOBS EQUAL 0)
+  set(CDASH_JOBS 1)
 endif()
 
 function(cdash_submit_part part)
@@ -71,6 +76,7 @@ get_filename_component(_launchers "${CMAKE_CURRENT_LIST_DIR}/enable_launchers.cm
 set(_opts
   "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
   "-DBUILD_TESTS=ON"
+  "-DENABLE_IPC=OFF"
   "-DBUILD_GUI=OFF"
   "-DBUILD_GUI_TESTS=OFF"
   "-DBUILD_BENCH=OFF"
@@ -103,6 +109,7 @@ message(STATUS "Source : ${CTEST_SOURCE_DIRECTORY}")
 message(STATUS "Binary : ${CTEST_BINARY_DIRECTORY}")
 message(STATUS "Name   : ${CTEST_BUILD_NAME}")
 message(STATUS "Submit : ${_submit_url}")
+message(STATUS "Jobs   : ${CDASH_JOBS}")
 
 file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
 
@@ -119,7 +126,7 @@ ctest_configure(RETURN_VALUE configure_result)
 cdash_submit_part(Configure)
 
 ctest_build(
-  PARALLEL_LEVEL 3
+  PARALLEL_LEVEL ${CDASH_JOBS}
   NUMBER_ERRORS build_errors
   NUMBER_WARNINGS build_warnings
   RETURN_VALUE build_result
@@ -129,10 +136,10 @@ cdash_submit_part(Build)
 if(CDASH_PROFILE STREQUAL "unit-asan")
   set(CTEST_MEMORYCHECK_TYPE "AddressSanitizer")
   set(CTEST_MEMORYCHECK_SANITIZER_OPTIONS "detect_leaks=1:abort_on_error=1")
-  ctest_memcheck(PARALLEL_LEVEL ${N} RETURN_VALUE test_result)
+  ctest_memcheck(PARALLEL_LEVEL ${CDASH_JOBS} RETURN_VALUE test_result)
   cdash_submit_part(MemCheck)
 else()
-  ctest_test(PARALLEL_LEVEL 3 RETURN_VALUE test_result)
+  ctest_test(PARALLEL_LEVEL ${CDASH_JOBS} RETURN_VALUE test_result)
   cdash_submit_part(Test)
 endif()
 

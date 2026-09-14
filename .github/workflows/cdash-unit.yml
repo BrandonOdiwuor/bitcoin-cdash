@@ -37,9 +37,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            cmake ninja-build g++ clang \
+            build-essential cmake ninja-build g++ clang \
             pkg-config python3 \
-            libevent-dev libboost-dev libsqlite3-dev libzmq3-dev
+            libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
+            capnproto libcapnp-dev
 
       - name: Versions
         run: |
