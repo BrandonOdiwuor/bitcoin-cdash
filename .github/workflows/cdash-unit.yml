@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [unit, unit-nowallet, unit-asan]
+        profile: [unit, unit-nowallet, unit-asan, unit-gcc]
     env:
       CTEST_SUBMIT_URL: ${{ vars.CTEST_SUBMIT_URL }}
     steps:
@@ -45,8 +45,8 @@ jobs:
       - name: Versions
         run: |
           cmake --version
-          ctest --version
           clang --version | head -1
+          gcc --version | head -1
 
       - name: Run dashboard
         run: |

@@ -20,17 +20,28 @@ if(NOT DEFINED CDASH_SUBMIT)
 endif()
 
 set(_profile_ok FALSE)
-foreach(_p unit unit-nowallet unit-asan)
+foreach(_p unit unit-nowallet unit-asan unit-gcc)
   if(CDASH_PROFILE STREQUAL _p)
     set(_profile_ok TRUE)
   endif()
 endforeach()
 if(NOT _profile_ok)
-  message(FATAL_ERROR "CDASH_PROFILE must be unit, unit-nowallet, or unit-asan")
+  message(FATAL_ERROR "CDASH_PROFILE must be unit, unit-nowallet, unit-asan, or unit-gcc")
 endif()
 
 if(NOT CDASH_MODEL STREQUAL "Experimental" AND NOT CDASH_MODEL STREQUAL "Nightly")
   message(FATAL_ERROR "CDASH_MODEL must be Experimental or Nightly")
+endif()
+
+if(NOT CDASH_JOBS AND DEFINED ENV{CDASH_JOBS})
+  set(CDASH_JOBS "$ENV{CDASH_JOBS}")
+endif()
+if(NOT CDASH_JOBS)
+  include(ProcessorCount)
+  ProcessorCount(CDASH_JOBS)
+endif()
+if(NOT CDASH_JOBS OR CDASH_JOBS EQUAL 0)
+  set(CDASH_JOBS 1)
 endif()
 
 set(CTEST_BINARY_DIRECTORY "${CTEST_SOURCE_DIRECTORY}/build-${CDASH_PROFILE}")
@@ -53,17 +64,6 @@ if(NOT _submit_url)
   set(_submit_url "http://127.0.0.1:8080/submit.php?project=core")
 endif()
 
-if(NOT CDASH_JOBS AND DEFINED ENV{CDASH_JOBS})
-  set(CDASH_JOBS "$ENV{CDASH_JOBS}")
-endif()
-if(NOT CDASH_JOBS)
-  include(ProcessorCount)
-  ProcessorCount(CDASH_JOBS)
-endif()
-if(NOT CDASH_JOBS OR CDASH_JOBS EQUAL 0)
-  set(CDASH_JOBS 1)
-endif()
-
 function(cdash_submit_part part)
   if(NOT CDASH_SUBMIT)
     return()
@@ -76,25 +76,39 @@ get_filename_component(_launchers "${CMAKE_CURRENT_LIST_DIR}/enable_launchers.cm
 set(_opts
   "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
   "-DBUILD_TESTS=ON"
-  "-DENABLE_IPC=OFF"
   "-DBUILD_GUI=OFF"
   "-DBUILD_GUI_TESTS=OFF"
   "-DBUILD_BENCH=OFF"
   "-DBUILD_FUZZ_BINARY=OFF"
+  "-DENABLE_IPC=OFF"
   "-DCTEST_USE_LAUNCHERS=ON"
   "-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=${_launchers}"
 )
 
 if(CDASH_PROFILE STREQUAL "unit")
-  list(APPEND _opts "-DENABLE_WALLET=ON")
+  list(APPEND _opts
+    "-DENABLE_WALLET=ON"
+    "-DCMAKE_C_COMPILER=clang"
+    "-DCMAKE_CXX_COMPILER=clang++"
+  )
 elseif(CDASH_PROFILE STREQUAL "unit-nowallet")
-  list(APPEND _opts "-DENABLE_WALLET=OFF")
+  list(APPEND _opts
+    "-DENABLE_WALLET=OFF"
+    "-DCMAKE_C_COMPILER=clang"
+    "-DCMAKE_CXX_COMPILER=clang++"
+  )
 elseif(CDASH_PROFILE STREQUAL "unit-asan")
   list(APPEND _opts
     "-DENABLE_WALLET=ON"
     "-DCMAKE_C_COMPILER=clang"
     "-DCMAKE_CXX_COMPILER=clang++"
     "-DSANITIZERS=address,undefined"
+  )
+elseif(CDASH_PROFILE STREQUAL "unit-gcc")
+  list(APPEND _opts
+    "-DENABLE_WALLET=ON"
+    "-DCMAKE_C_COMPILER=gcc"
+    "-DCMAKE_CXX_COMPILER=g++"
   )
 endif()
 
@@ -105,11 +119,11 @@ endforeach()
 
 message(STATUS "Model  : ${CDASH_MODEL}")
 message(STATUS "Profile: ${CDASH_PROFILE}")
+message(STATUS "Jobs   : ${CDASH_JOBS}")
 message(STATUS "Source : ${CTEST_SOURCE_DIRECTORY}")
 message(STATUS "Binary : ${CTEST_BINARY_DIRECTORY}")
 message(STATUS "Name   : ${CTEST_BUILD_NAME}")
 message(STATUS "Submit : ${_submit_url}")
-message(STATUS "Jobs   : ${CDASH_JOBS}")
 
 file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
 
