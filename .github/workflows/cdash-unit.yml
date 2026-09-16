@@ -13,6 +13,9 @@ concurrency:
   group: cdash-unit-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CTEST_SUBMIT_URL: ${{ vars.CTEST_SUBMIT_URL }}
+
 jobs:
   prototype:
     runs-on: ubuntu-24.04
