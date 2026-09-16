@@ -20,14 +20,10 @@ jobs:
       fail-fast: false
       matrix:
         profile: [unit, unit-nowallet, unit-asan, unit-gcc]
-    env:
-      CTEST_SUBMIT_URL: ${{ vars.CTEST_SUBMIT_URL }}
     steps:
-      - name: Checkout pipeline
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Checkout Bitcoin Core
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: bitcoin/bitcoin
           path: bitcoin
@@ -42,18 +38,42 @@ jobs:
             libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
             capnproto libcapnp-dev
 
-      - name: Versions
-        run: |
-          cmake --version
-          clang --version | head -1
-          gcc --version | head -1
-
       - name: Run dashboard
         run: |
-          test -n "$CTEST_SUBMIT_URL"
           BITCOIN_SOURCE_DIR="$PWD/bitcoin" \
             ctest -S "$PWD/cmake/cdash_unit.cmake" -V \
             -DCDASH_PROFILE=${{ matrix.profile }} \
+            -DCDASH_MODEL=Nightly \
+            -DCDASH_SUBMIT=ON \
+            -DCTEST_SUBMIT_URL="$CTEST_SUBMIT_URL"
+
+  functional:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: BrandonOdiwuor/bitcoin
+          ref: cmake-ctest-fixes
+          path: bitcoin
+          fetch-depth: 0
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build clang \
+            pkg-config python3 python3-zmq \
+            libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
+            capnproto libcapnp-dev
+
+      - name: Run dashboard
+        run: |
+          BITCOIN_SOURCE_DIR="$PWD/bitcoin" \
+            ctest -S "$PWD/cmake/cdash_unit.cmake" -V \
+            -DCDASH_PROFILE=functional \
             -DCDASH_MODEL=Nightly \
             -DCDASH_SUBMIT=ON \
             -DCTEST_SUBMIT_URL="$CTEST_SUBMIT_URL"

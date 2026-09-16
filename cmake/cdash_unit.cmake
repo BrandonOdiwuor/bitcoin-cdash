@@ -1,3 +1,4 @@
+# Profiles: unit | unit-nowallet | unit-asan | unit-gcc | functional
 cmake_minimum_required(VERSION 3.25)
 
 if(NOT CTEST_SOURCE_DIRECTORY)
@@ -20,13 +21,13 @@ if(NOT DEFINED CDASH_SUBMIT)
 endif()
 
 set(_profile_ok FALSE)
-foreach(_p unit unit-nowallet unit-asan unit-gcc)
+foreach(_p unit unit-nowallet unit-asan unit-gcc functional)
   if(CDASH_PROFILE STREQUAL _p)
     set(_profile_ok TRUE)
   endif()
 endforeach()
 if(NOT _profile_ok)
-  message(FATAL_ERROR "CDASH_PROFILE must be unit, unit-nowallet, unit-asan, or unit-gcc")
+  message(FATAL_ERROR "CDASH_PROFILE must be unit, unit-nowallet, unit-asan, unit-gcc, or functional")
 endif()
 
 if(NOT CDASH_MODEL STREQUAL "Experimental" AND NOT CDASH_MODEL STREQUAL "Nightly")
@@ -75,7 +76,6 @@ get_filename_component(_launchers "${CMAKE_CURRENT_LIST_DIR}/enable_launchers.cm
 
 set(_opts
   "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
-  "-DBUILD_TESTS=ON"
   "-DBUILD_GUI=OFF"
   "-DBUILD_GUI_TESTS=OFF"
   "-DBUILD_BENCH=OFF"
@@ -87,18 +87,21 @@ set(_opts
 
 if(CDASH_PROFILE STREQUAL "unit")
   list(APPEND _opts
+    "-DBUILD_TESTS=ON"
     "-DENABLE_WALLET=ON"
     "-DCMAKE_C_COMPILER=clang"
     "-DCMAKE_CXX_COMPILER=clang++"
   )
 elseif(CDASH_PROFILE STREQUAL "unit-nowallet")
   list(APPEND _opts
+    "-DBUILD_TESTS=ON"
     "-DENABLE_WALLET=OFF"
     "-DCMAKE_C_COMPILER=clang"
     "-DCMAKE_CXX_COMPILER=clang++"
   )
 elseif(CDASH_PROFILE STREQUAL "unit-asan")
   list(APPEND _opts
+    "-DBUILD_TESTS=ON"
     "-DENABLE_WALLET=ON"
     "-DCMAKE_C_COMPILER=clang"
     "-DCMAKE_CXX_COMPILER=clang++"
@@ -106,9 +109,20 @@ elseif(CDASH_PROFILE STREQUAL "unit-asan")
   )
 elseif(CDASH_PROFILE STREQUAL "unit-gcc")
   list(APPEND _opts
+    "-DBUILD_TESTS=ON"
     "-DENABLE_WALLET=ON"
     "-DCMAKE_C_COMPILER=gcc"
     "-DCMAKE_CXX_COMPILER=g++"
+  )
+elseif(CDASH_PROFILE STREQUAL "functional")
+  list(APPEND _opts
+    "-DBUILD_TESTS=OFF"
+    "-DBUILD_FUNCTIONAL_TESTS=ON"
+    "-DENABLE_WALLET=ON"
+    "-DBUILD_DAEMON=ON"
+    "-DBUILD_CLI=ON"
+    "-DCMAKE_C_COMPILER=clang"
+    "-DCMAKE_CXX_COMPILER=clang++"
   )
 endif()
 
@@ -152,6 +166,14 @@ if(CDASH_PROFILE STREQUAL "unit-asan")
   set(CTEST_MEMORYCHECK_SANITIZER_OPTIONS "detect_leaks=1:abort_on_error=1")
   ctest_memcheck(PARALLEL_LEVEL ${CDASH_JOBS} RETURN_VALUE test_result)
   cdash_submit_part(MemCheck)
+elseif(CDASH_PROFILE STREQUAL "functional")
+  ctest_test(
+    INCLUDE_LABEL "functional"
+    EXCLUDE_LABEL "extended"
+    PARALLEL_LEVEL ${CDASH_JOBS}
+    RETURN_VALUE test_result
+  )
+  cdash_submit_part(Test)
 else()
   ctest_test(PARALLEL_LEVEL ${CDASH_JOBS} RETURN_VALUE test_result)
   cdash_submit_part(Test)
