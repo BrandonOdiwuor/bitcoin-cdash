@@ -46,7 +46,7 @@ jobs:
           BITCOIN_SOURCE_DIR="$PWD/bitcoin" \
             ctest -S "$PWD/cmake/cdash_unit.cmake" -V \
             -DCDASH_PROFILE=${{ matrix.profile }} \
-            -DCDASH_MODEL=Nightly \
+            -DCDASH_MODEL=${{ github.event_name == 'schedule' && 'Nightly' || 'Experimental' }} \
             -DCDASH_SUBMIT=ON \
             -DCTEST_SUBMIT_URL="$CTEST_SUBMIT_URL"
 
@@ -83,6 +83,6 @@ jobs:
           BITCOIN_SOURCE_DIR="$PWD/bitcoin" \
             ctest -S "$PWD/cmake/cdash_unit.cmake" -V \
             -DCDASH_PROFILE=functional \
-            -DCDASH_MODEL=Nightly \
+            -DCDASH_MODEL=${{ github.event_name == 'schedule' && 'Nightly' || 'Experimental' }} \
             -DCDASH_SUBMIT=ON \
             -DCTEST_SUBMIT_URL="$CTEST_SUBMIT_URL"
