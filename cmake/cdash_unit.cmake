@@ -21,13 +21,13 @@ if(NOT DEFINED CDASH_SUBMIT)
 endif()
 
 set(_profile_ok FALSE)
-foreach(_p unit unit-nowallet unit-asan unit-gcc functional)
+foreach(_p unit unit-nowallet unit-asan unit-ubsan unit-gcc functional)
   if(CDASH_PROFILE STREQUAL _p)
     set(_profile_ok TRUE)
   endif()
 endforeach()
 if(NOT _profile_ok)
-  message(FATAL_ERROR "CDASH_PROFILE must be unit, unit-nowallet, unit-asan, unit-gcc, or functional")
+  message(FATAL_ERROR "CDASH_PROFILE must be unit, unit-nowallet, unit-asan, unit-ubsan, unit-gcc, or functional")
 endif()
 
 if(NOT CDASH_MODEL STREQUAL "Experimental" AND NOT CDASH_MODEL STREQUAL "Nightly")
@@ -107,6 +107,14 @@ elseif(CDASH_PROFILE STREQUAL "unit-asan")
     "-DBUILD_TESTS=ON"
     "-DENABLE_WALLET=ON"
   )
+elseif(CDASH_PROFILE STREQUAL "unit-ubsan")
+  list(APPEND _opts
+    "-DCMAKE_C_COMPILER=clang"
+    "-DCMAKE_CXX_COMPILER=clang++"
+    "-DSANITIZERS=undefined,integer,float-divide-by-zero"
+    "-DBUILD_TESTS=ON"
+    "-DENABLE_WALLET=ON"
+  )
 elseif(CDASH_PROFILE STREQUAL "unit-gcc")
   list(APPEND _opts
     "-DBUILD_TESTS=ON"
@@ -175,6 +183,16 @@ if(CDASH_PROFILE STREQUAL "unit-asan")
     set(ENV{LSAN_OPTIONS}
       "suppressions=${CTEST_SOURCE_DIRECTORY}/test/sanitizer_suppressions/lsan")
   endif()
+  ctest_memcheck(PARALLEL_LEVEL ${CDASH_JOBS} RETURN_VALUE test_result)
+  cdash_submit_part(MemCheck)
+elseif(CDASH_PROFILE STREQUAL "unit-ubsan")
+  set(CTEST_MEMORYCHECK_TYPE "UndefinedBehaviorSanitizer")
+  set(_ubsan_opts "verbosity=1:print_stacktrace=1:halt_on_error=1:report_error_type=1")
+  if(EXISTS "${CTEST_SOURCE_DIRECTORY}/test/sanitizer_suppressions/ubsan")
+    string(APPEND _ubsan_opts
+      ":suppressions=${CTEST_SOURCE_DIRECTORY}/test/sanitizer_suppressions/ubsan")
+  endif()
+  set(CTEST_MEMORYCHECK_SANITIZER_OPTIONS "${_ubsan_opts}")
   ctest_memcheck(PARALLEL_LEVEL ${CDASH_JOBS} RETURN_VALUE test_result)
   cdash_submit_part(MemCheck)
 elseif(CDASH_PROFILE STREQUAL "functional")

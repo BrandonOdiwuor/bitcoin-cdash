@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [unit, unit-nowallet, unit-asan, unit-gcc]
+        profile: [unit, unit-nowallet, unit-asan, unit-ubsan, unit-gcc]
     steps:
       - uses: actions/checkout@v4
 
