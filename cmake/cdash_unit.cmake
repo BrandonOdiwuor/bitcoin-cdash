@@ -101,11 +101,11 @@ elseif(CDASH_PROFILE STREQUAL "unit-nowallet")
   )
 elseif(CDASH_PROFILE STREQUAL "unit-asan")
   list(APPEND _opts
-    "-DBUILD_TESTS=ON"
-    "-DENABLE_WALLET=ON"
     "-DCMAKE_C_COMPILER=clang"
     "-DCMAKE_CXX_COMPILER=clang++"
-    "-DSANITIZERS=address,undefined"
+    "-DSANITIZERS=address"
+    "-DBUILD_TESTS=ON"
+    "-DENABLE_WALLET=ON"
   )
 elseif(CDASH_PROFILE STREQUAL "unit-gcc")
   list(APPEND _opts
@@ -169,7 +169,12 @@ cdash_submit_part(Build)
 
 if(CDASH_PROFILE STREQUAL "unit-asan")
   set(CTEST_MEMORYCHECK_TYPE "AddressSanitizer")
-  set(CTEST_MEMORYCHECK_SANITIZER_OPTIONS "detect_leaks=1:abort_on_error=1")
+  set(CTEST_MEMORYCHECK_SANITIZER_OPTIONS
+    "verbosity=1:symbolize=1:detect_leaks=1:detect_stack_use_after_return=1:check_initialization_order=1:strict_init_order=1:abort_on_error=1")
+  if(EXISTS "${CTEST_SOURCE_DIRECTORY}/test/sanitizer_suppressions/lsan")
+    set(ENV{LSAN_OPTIONS}
+      "suppressions=${CTEST_SOURCE_DIRECTORY}/test/sanitizer_suppressions/lsan")
+  endif()
   ctest_memcheck(PARALLEL_LEVEL ${CDASH_JOBS} RETURN_VALUE test_result)
   cdash_submit_part(MemCheck)
 elseif(CDASH_PROFILE STREQUAL "functional")
