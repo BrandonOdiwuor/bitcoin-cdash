@@ -50,6 +50,37 @@ jobs:
             -DCDASH_SUBMIT=ON \
             -DCTEST_SUBMIT_URL="$CTEST_SUBMIT_URL"
 
+  tsan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: bitcoin/bitcoin
+          path: bitcoin
+          fetch-depth: 0
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build clang \
+            pkg-config python3 \
+            libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
+            capnproto libcapnp-dev
+
+      - name: Run dashboard
+        run: |
+          BITCOIN_SOURCE_DIR="$PWD/bitcoin" \
+            ctest -S "$PWD/cmake/cdash_unit.cmake" -V \
+            -DCDASH_PROFILE=unit-tsan \
+            -DCDASH_MODEL=${{ github.event_name == 'schedule' && 'Nightly' || 'Experimental' }} \
+            -DCDASH_SUBMIT=ON \
+            -DCDASH_JOBS=2 \
+            -DCTEST_SUBMIT_URL="$CTEST_SUBMIT_URL"
+
   functional:
     runs-on: ubuntu-24.04
     timeout-minutes: 360
