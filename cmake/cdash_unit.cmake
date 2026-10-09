@@ -21,13 +21,13 @@ if(NOT DEFINED CDASH_SUBMIT)
 endif()
 
 set(_profile_ok FALSE)
-foreach(_p unit unit-nowallet unit-asan unit-ubsan unit-tsan unit-gcc functional)
+foreach(_p unit unit-nowallet unit-asan unit-ubsan unit-tsan unit-valgrind unit-gcc functional)
   if(CDASH_PROFILE STREQUAL _p)
     set(_profile_ok TRUE)
   endif()
 endforeach()
 if(NOT _profile_ok)
-  message(FATAL_ERROR "CDASH_PROFILE must be unit, unit-nowallet, unit-asan, unit-ubsan, unit-tsan, unit-gcc, or functional")
+  message(FATAL_ERROR "CDASH_PROFILE must be unit, unit-nowallet, unit-asan, unit-ubsan, unit-tsan, unit-valgrind, unit-gcc, or functional")
 endif()
 
 if(NOT CDASH_MODEL STREQUAL "Experimental" AND NOT CDASH_MODEL STREQUAL "Nightly")
@@ -115,11 +115,19 @@ elseif(CDASH_PROFILE STREQUAL "unit-ubsan")
     "-DBUILD_TESTS=ON"
     "-DENABLE_WALLET=ON"
   )
-  elseif(CDASH_PROFILE STREQUAL "unit-tsan")
+elseif(CDASH_PROFILE STREQUAL "unit-tsan")
   list(APPEND _opts
     "-DCMAKE_C_COMPILER=clang"
     "-DCMAKE_CXX_COMPILER=clang++"
     "-DSANITIZERS=thread"
+    "-DBUILD_TESTS=ON"
+    "-DENABLE_WALLET=ON"
+    "-DBUILD_GUI=OFF"
+  )
+elseif(CDASH_PROFILE STREQUAL "unit-valgrind")
+  list(APPEND _opts
+    "-DCMAKE_C_COMPILER=clang"
+    "-DCMAKE_CXX_COMPILER=clang++"
     "-DBUILD_TESTS=ON"
     "-DENABLE_WALLET=ON"
     "-DBUILD_GUI=OFF"
@@ -212,6 +220,18 @@ elseif(CDASH_PROFILE STREQUAL "unit-tsan")
       ":suppressions=${CTEST_SOURCE_DIRECTORY}/test/sanitizer_suppressions/tsan")
   endif()
   set(CTEST_MEMORYCHECK_SANITIZER_OPTIONS "${_tsan_opts}")
+  ctest_memcheck(PARALLEL_LEVEL ${CDASH_JOBS} RETURN_VALUE test_result)
+  cdash_submit_part(MemCheck)
+elseif(CDASH_PROFILE STREQUAL "unit-valgrind")
+  find_program(CTEST_MEMORYCHECK_COMMAND valgrind REQUIRED)
+  set(CTEST_MEMORYCHECK_TYPE "Valgrind")
+  set(CTEST_MEMORYCHECK_COMMAND_OPTIONS
+    "--error-exitcode=1 --leak-check=full --show-leak-kinds=definite --errors-for-leak-kinds=definite --track-origins=yes --error-limit=no --child-silent-after-fork=yes")
+  set(CTEST_TEST_TIMEOUT 7200)
+  if(EXISTS "${CTEST_SOURCE_DIRECTORY}/test/sanitizer_suppressions/valgrind.supp")
+    set(CTEST_MEMORYCHECK_SUPPRESSIONS_FILE
+      "${CTEST_SOURCE_DIRECTORY}/test/sanitizer_suppressions/valgrind.supp")
+  endif()
   ctest_memcheck(PARALLEL_LEVEL ${CDASH_JOBS} RETURN_VALUE test_result)
   cdash_submit_part(MemCheck)
 elseif(CDASH_PROFILE STREQUAL "functional")
