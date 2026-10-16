@@ -9,7 +9,7 @@ concurrency:
 
 jobs:
   smoke:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +41,7 @@ jobs:
             -DBUILD_TESTS=ON \
             -DENABLE_WALLET=ON \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo
-          cmake --build build-tysan -j1 --target test_bitcoin
+          cmake --build build-tysan -j2 --target test_bitcoin
 
       - name: Run one short test
         working-directory: bitcoin
