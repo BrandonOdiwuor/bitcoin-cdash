@@ -21,13 +21,13 @@ if(NOT DEFINED CDASH_SUBMIT)
 endif()
 
 set(_profile_ok FALSE)
-foreach(_p unit unit-nowallet unit-asan unit-ubsan unit-tsan unit-valgrind unit-gcc functional)
+foreach(_p unit unit-nowallet unit-asan unit-ubsan unit-tsan unit-tysan unit-valgrind unit-gcc functional)
   if(CDASH_PROFILE STREQUAL _p)
     set(_profile_ok TRUE)
   endif()
 endforeach()
 if(NOT _profile_ok)
-  message(FATAL_ERROR "CDASH_PROFILE must be unit, unit-nowallet, unit-asan, unit-ubsan, unit-tsan, unit-valgrind, unit-gcc, or functional")
+  message(FATAL_ERROR "CDASH_PROFILE must be unit, unit-nowallet, unit-asan, unit-ubsan, unit-tsan, unit-tysan, unit-valgrind, unit-gcc, or functional")
 endif()
 
 if(NOT CDASH_MODEL STREQUAL "Experimental" AND NOT CDASH_MODEL STREQUAL "Nightly")
@@ -124,6 +124,21 @@ elseif(CDASH_PROFILE STREQUAL "unit-tsan")
     "-DENABLE_WALLET=ON"
     "-DBUILD_GUI=OFF"
   )
+elseif(CDASH_PROFILE STREQUAL "unit-tysan")
+  list(APPEND _opts
+    "-DCMAKE_C_COMPILER=clang-21"
+    "-DCMAKE_CXX_COMPILER=clang++-21"
+    "-DSANITIZERS=type"
+    "-DBUILD_TESTS=ON"
+    "-DENABLE_WALLET=ON"
+  )
+  if(EXISTS "${CTEST_SOURCE_DIRECTORY}/test/sanitizer_suppressions/tysan")
+    set(_tysan_ignore "-fsanitize-ignorelist=${CTEST_SOURCE_DIRECTORY}/test/sanitizer_suppressions/tysan")
+    list(APPEND _opts
+      "-DCMAKE_C_FLAGS=${_tysan_ignore}"
+      "-DCMAKE_CXX_FLAGS=${_tysan_ignore}"
+    )
+  endif()
 elseif(CDASH_PROFILE STREQUAL "unit-valgrind")
   list(APPEND _opts
     "-DCMAKE_C_COMPILER=clang"
@@ -222,6 +237,10 @@ elseif(CDASH_PROFILE STREQUAL "unit-tsan")
   set(CTEST_MEMORYCHECK_SANITIZER_OPTIONS "${_tsan_opts}")
   ctest_memcheck(PARALLEL_LEVEL ${CDASH_JOBS} RETURN_VALUE test_result)
   cdash_submit_part(MemCheck)
+elseif(CDASH_PROFILE STREQUAL "unit-tysan")
+  set(ENV{TYSAN_OPTIONS} "halt_on_error=0")
+  ctest_test(PARALLEL_LEVEL ${CDASH_JOBS} RETURN_VALUE test_result)
+  cdash_submit_part(Test)
 elseif(CDASH_PROFILE STREQUAL "unit-valgrind")
   find_program(CTEST_MEMORYCHECK_COMMAND valgrind REQUIRED)
   set(CTEST_MEMORYCHECK_TYPE "Valgrind")
