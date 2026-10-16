@@ -1,0 +1,54 @@
+name: tysan-smoke
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: tysan-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: BrandonOdiwuor/bitcoin
+          ref: cmake-ctest-fixes
+          path: bitcoin
+          fetch-depth: 1
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build \
+            clang-21 llvm-21 libclang-rt-21-dev \
+            pkg-config python3 file \
+            libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
+            capnproto libcapnp-dev
+
+      - name: Configure and build test_bitcoin (-j1)
+        working-directory: bitcoin
+        run: |
+          cmake -S . -B build-tysan -G Ninja \
+            -DCMAKE_C_COMPILER=clang-21 \
+            -DCMAKE_CXX_COMPILER=clang++-21 \
+            -DSANITIZERS=type \
+            -DBUILD_TESTS=ON \
+            -DENABLE_WALLET=ON \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          cmake --build build-tysan -j1 --target test_bitcoin
+
+      - name: Run one short test
+        working-directory: bitcoin
+        run: |
+          export TYSAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer-21
+          export TYSAN_OPTIONS=halt_on_error=0:report_once=1
+          ./build-tysan/bin/test_bitcoin \
+            --run_test=addrman_tests \
+            --catch_system_error=no \
+            --log_level=test_suite
