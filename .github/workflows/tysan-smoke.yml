@@ -27,6 +27,15 @@ jobs:
             libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
             capnproto libcapnp-dev
 
+      - name: Create swap (8GB)
+        run: |
+          sudo fallocate -l 8G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=8192
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          swapon --show
+          free -h
+
       - name: Configure and build test_bitcoin (-j1)
         working-directory: bitcoin
         run: |
@@ -37,7 +46,7 @@ jobs:
             -DBUILD_TESTS=ON \
             -DENABLE_WALLET=ON \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo
-          cmake --build build-tysan -j2 --target test_bitcoin
+          cmake --build build-tysan -j1 --target test_bitcoin
 
       - name: Run one short test
         working-directory: bitcoin
