@@ -27,14 +27,19 @@ jobs:
             libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
             capnproto libcapnp-dev
 
-      - name: Create swap (8GB)
+      - name: Create swap (safe, idempotent)
         run: |
-          sudo fallocate -l 8G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=8192
+          sudo swapoff /swapfile || true
+          sudo rm -f /swapfile || true
+
+          sudo fallocate -l 8G /swapfile || \
+            sudo dd if=/dev/zero of=/swapfile bs=1M count=8192 conv=fsync
+
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
           sudo swapon /swapfile
+
           swapon --show
-          free -h
 
       - name: Configure and build test_bitcoin (-j1)
         working-directory: bitcoin
