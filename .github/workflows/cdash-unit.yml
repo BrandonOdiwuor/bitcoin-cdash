@@ -113,15 +113,15 @@ jobs:
             -DCTEST_SUBMIT_URL="$CTEST_SUBMIT_URL"
 
   functional:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/checkout@v4
         with:
-          repository: BrandonOdiwuor/bitcoin
-          ref: cmake-ctest-fixes
+          repository: bitcoin/bitcoin
+          ref: refs/pull/35762/head
           path: bitcoin
           fetch-depth: 0
 
