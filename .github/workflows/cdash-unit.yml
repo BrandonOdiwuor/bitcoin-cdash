@@ -18,7 +18,8 @@ env:
 
 jobs:
   prototype:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
@@ -51,8 +52,8 @@ jobs:
             -DCTEST_SUBMIT_URL="$CTEST_SUBMIT_URL"
 
   tsan:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 240
+    runs-on: ubuntu-26.04
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
 
@@ -82,8 +83,8 @@ jobs:
             -DCTEST_SUBMIT_URL="$CTEST_SUBMIT_URL"
 
   valgrind:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 360
+    runs-on: ubuntu-26.04
+    timeout-minutes: 480
     steps:
       - uses: actions/checkout@v4
 
