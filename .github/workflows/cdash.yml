@@ -1,4 +1,4 @@
-name: cdash-unit
+name: cdash
 
 on:
   workflow_dispatch:
@@ -7,10 +7,10 @@ on:
   push:
     paths:
       - "cmake/**"
-      - ".github/workflows/cdash-unit.yml"
+      - ".github/workflows/cdash.yml"
 
 concurrency:
-  group: cdash-unit-${{ github.ref }}
+  group: cdash-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -26,13 +26,11 @@ jobs:
         profile: [unit, unit-nowallet, unit-asan, unit-ubsan, unit-gcc]
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/checkout@v4
         with:
           repository: bitcoin/bitcoin
           path: bitcoin
           fetch-depth: 0
-
       - name: Install packages
         run: |
           sudo apt-get update
@@ -41,12 +39,38 @@ jobs:
             pkg-config python3 \
             libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
             capnproto libcapnp-dev
-
       - name: Run dashboard
         run: |
           BITCOIN_SOURCE_DIR="$PWD/bitcoin" \
-            ctest -S "$PWD/cmake/cdash_unit.cmake" -V \
+            ctest -S "$PWD/cmake/cdash.cmake" -V \
             -DCDASH_PROFILE=${{ matrix.profile }} \
+            -DCDASH_MODEL=${{ github.event_name == 'schedule' && 'Nightly' || 'Experimental' }} \
+            -DCDASH_SUBMIT=ON \
+            -DCTEST_SUBMIT_URL="$CTEST_SUBMIT_URL"
+
+  coverage:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: bitcoin/bitcoin
+          path: bitcoin
+          fetch-depth: 0
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build clang llvm \
+            pkg-config python3 \
+            libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
+            capnproto libcapnp-dev
+      - name: Run dashboard
+        run: |
+          BITCOIN_SOURCE_DIR="$PWD/bitcoin" \
+            ctest -S "$PWD/cmake/cdash.cmake" -V \
+            -DCDASH_PROFILE=unit-coverage \
             -DCDASH_MODEL=${{ github.event_name == 'schedule' && 'Nightly' || 'Experimental' }} \
             -DCDASH_SUBMIT=ON \
             -DCTEST_SUBMIT_URL="$CTEST_SUBMIT_URL"
@@ -56,13 +80,11 @@ jobs:
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/checkout@v4
         with:
           repository: bitcoin/bitcoin
           path: bitcoin
           fetch-depth: 0
-
       - name: Install packages
         run: |
           sudo apt-get update
@@ -71,11 +93,10 @@ jobs:
             pkg-config python3 \
             libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
             capnproto libcapnp-dev
-
       - name: Run dashboard
         run: |
           BITCOIN_SOURCE_DIR="$PWD/bitcoin" \
-            ctest -S "$PWD/cmake/cdash_unit.cmake" -V \
+            ctest -S "$PWD/cmake/cdash.cmake" -V \
             -DCDASH_PROFILE=unit-tsan \
             -DCDASH_MODEL=${{ github.event_name == 'schedule' && 'Nightly' || 'Experimental' }} \
             -DCDASH_SUBMIT=ON \
@@ -87,13 +108,11 @@ jobs:
     timeout-minutes: 480
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/checkout@v4
         with:
           repository: bitcoin/bitcoin
           path: bitcoin
           fetch-depth: 0
-
       - name: Install packages
         run: |
           sudo apt-get update
@@ -102,11 +121,10 @@ jobs:
             pkg-config python3 \
             libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
             capnproto libcapnp-dev
-
       - name: Run dashboard
         run: |
           BITCOIN_SOURCE_DIR="$PWD/bitcoin" \
-            ctest -S "$PWD/cmake/cdash_unit.cmake" -V \
+            ctest -S "$PWD/cmake/cdash.cmake" -V \
             -DCDASH_PROFILE=unit-valgrind \
             -DCDASH_MODEL=${{ github.event_name == 'schedule' && 'Nightly' || 'Experimental' }} \
             -DCDASH_SUBMIT=ON \
@@ -118,14 +136,12 @@ jobs:
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/checkout@v4
         with:
           repository: bitcoin/bitcoin
           ref: refs/pull/35762/head
           path: bitcoin
           fetch-depth: 0
-
       - name: Install packages
         run: |
           sudo apt-get update
@@ -135,17 +151,15 @@ jobs:
             libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
             capnproto libcapnp-dev
           pip3 install --user 'pycapnp==2.2.1'
-
       - name: Previous-release binaries
         run: python3 test/get_previous_releases.py -t "$PWD/releases"
         working-directory: bitcoin
-
       - name: Run dashboard
         env:
           PREVIOUS_RELEASES_DIR: ${{ github.workspace }}/bitcoin/releases
         run: |
           BITCOIN_SOURCE_DIR="$PWD/bitcoin" \
-            ctest -S "$PWD/cmake/cdash_unit.cmake" -V \
+            ctest -S "$PWD/cmake/cdash.cmake" -V \
             -DCDASH_PROFILE=functional \
             -DCDASH_MODEL=${{ github.event_name == 'schedule' && 'Nightly' || 'Experimental' }} \
             -DCDASH_SUBMIT=ON \

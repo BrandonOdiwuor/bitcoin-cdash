@@ -1,4 +1,4 @@
-# Profiles: unit | unit-nowallet | unit-asan | unit-gcc | functional
+# Profiles: unit | unit-nowallet | unit-asan | unit-ubsan | unit-tsan | unit-valgrind | unit-gcc | unit-coverage | functional
 cmake_minimum_required(VERSION 3.25)
 
 if(NOT CTEST_SOURCE_DIRECTORY)
@@ -19,15 +19,19 @@ endif()
 if(NOT DEFINED CDASH_SUBMIT)
   set(CDASH_SUBMIT ON)
 endif()
+# unit-coverage only: submit Cobertura coverage to CDash (OFF = local reports only).
+if(NOT DEFINED CDASH_COVERAGE_SUBMIT)
+  set(CDASH_COVERAGE_SUBMIT ON)
+endif()
 
 set(_profile_ok FALSE)
-foreach(_p unit unit-nowallet unit-asan unit-ubsan unit-tsan unit-valgrind unit-gcc functional)
+foreach(_p unit unit-nowallet unit-asan unit-ubsan unit-tsan unit-valgrind unit-gcc unit-coverage functional)
   if(CDASH_PROFILE STREQUAL _p)
     set(_profile_ok TRUE)
   endif()
 endforeach()
 if(NOT _profile_ok)
-  message(FATAL_ERROR "CDASH_PROFILE must be unit, unit-nowallet, unit-asan, unit-ubsan, unit-tsan, unit-valgrind, unit-gcc, or functional")
+  message(FATAL_ERROR "CDASH_PROFILE must be unit, unit-nowallet, unit-asan, unit-ubsan, unit-tsan, unit-valgrind, unit-gcc, unit-coverage, or functional")
 endif()
 
 if(NOT CDASH_MODEL STREQUAL "Experimental" AND NOT CDASH_MODEL STREQUAL "Nightly")
@@ -73,6 +77,7 @@ function(cdash_submit_part part)
 endfunction()
 
 get_filename_component(_launchers "${CMAKE_CURRENT_LIST_DIR}/enable_launchers.cmake" ABSOLUTE)
+include("${CMAKE_CURRENT_LIST_DIR}/coverage.cmake")
 
 set(_opts
   "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
@@ -139,6 +144,8 @@ elseif(CDASH_PROFILE STREQUAL "unit-gcc")
     "-DCMAKE_C_COMPILER=gcc"
     "-DCMAKE_CXX_COMPILER=g++"
   )
+elseif(CDASH_PROFILE STREQUAL "unit-coverage")
+  unit_coverage_configure_options(_opts)
 elseif(CDASH_PROFILE STREQUAL "functional")
   list(APPEND _opts
     "-DBUILD_TESTS=OFF"
@@ -168,6 +175,9 @@ message(STATUS "Jobs   : ${CDASH_JOBS}")
 message(STATUS "Source : ${CTEST_SOURCE_DIRECTORY}")
 message(STATUS "Binary : ${CTEST_BINARY_DIRECTORY}")
 message(STATUS "Name   : ${CTEST_BUILD_NAME}")
+if(CDASH_PROFILE STREQUAL "unit-coverage")
+  message(STATUS "Coverage submit: ${CDASH_COVERAGE_SUBMIT}")
+endif()
 message(STATUS "Submit : ${_submit_url}")
 
 file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
@@ -234,6 +244,8 @@ elseif(CDASH_PROFILE STREQUAL "unit-valgrind")
   endif()
   ctest_memcheck(PARALLEL_LEVEL ${CDASH_JOBS} RETURN_VALUE test_result)
   cdash_submit_part(MemCheck)
+elseif(CDASH_PROFILE STREQUAL "unit-coverage")
+  run_unit_coverage()
 elseif(CDASH_PROFILE STREQUAL "functional")
   ctest_test(
     INCLUDE_LABEL "functional"
@@ -255,8 +267,8 @@ endif()
 
 message(STATUS "configure=${configure_result} build=${build_result} "
                "errors=${build_errors} warnings=${build_warnings} "
-               "test=${test_result}")
+               "test=${test_result} coverage=${coverage_result}")
 
-if(configure_result OR build_result OR test_result)
+if(configure_result OR build_result OR test_result OR coverage_result)
   message(FATAL_ERROR "Dashboard failed")
 endif()
