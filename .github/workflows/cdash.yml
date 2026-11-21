@@ -31,6 +31,7 @@ jobs:
           repository: bitcoin/bitcoin
           path: bitcoin
           fetch-depth: 0
+
       - name: Install packages
         run: |
           sudo apt-get update
@@ -39,11 +40,24 @@ jobs:
             pkg-config python3 \
             libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
             capnproto libcapnp-dev
+
+      - name: Set build name
+        id: buildname
+        run: |
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m)
+          COMPILER=clang
+          if [ "${{ matrix.profile }}" = "unit-gcc" ]; then
+            COMPILER=gcc
+          fi
+          echo "name=${OS}-${ARCH}-${COMPILER}-${{ matrix.profile }}-ninja" >> "$GITHUB_OUTPUT"
+
       - name: Run dashboard
         run: |
           BITCOIN_SOURCE_DIR="$PWD/bitcoin" \
             ctest -S "$PWD/cmake/cdash.cmake" -V \
             -DCDASH_PROFILE=${{ matrix.profile }} \
+            -DCTEST_BUILD_NAME="${{ steps.buildname.outputs.name }}" \
             -DCDASH_MODEL=${{ github.event_name == 'schedule' && 'Nightly' || 'Experimental' }} \
             -DCDASH_SUBMIT=ON \
             -DCTEST_SUBMIT_URL="$CTEST_SUBMIT_URL"
@@ -58,6 +72,7 @@ jobs:
           repository: bitcoin/bitcoin
           path: bitcoin
           fetch-depth: 0
+
       - name: Install packages
         run: |
           sudo apt-get update
@@ -66,11 +81,20 @@ jobs:
             pkg-config python3 \
             libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
             capnproto libcapnp-dev
+
+      - name: Set build name
+        id: buildname
+        run: |
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m)
+          echo "name=${OS}-${ARCH}-clang-unit-coverage-ninja" >> "$GITHUB_OUTPUT"
+
       - name: Run dashboard
         run: |
           BITCOIN_SOURCE_DIR="$PWD/bitcoin" \
             ctest -S "$PWD/cmake/cdash.cmake" -V \
             -DCDASH_PROFILE=unit-coverage \
+            -DCTEST_BUILD_NAME="${{ steps.buildname.outputs.name }}" \
             -DCDASH_MODEL=${{ github.event_name == 'schedule' && 'Nightly' || 'Experimental' }} \
             -DCDASH_SUBMIT=ON \
             -DCTEST_SUBMIT_URL="$CTEST_SUBMIT_URL"
@@ -85,6 +109,7 @@ jobs:
           repository: bitcoin/bitcoin
           path: bitcoin
           fetch-depth: 0
+
       - name: Install packages
         run: |
           sudo apt-get update
@@ -93,11 +118,20 @@ jobs:
             pkg-config python3 \
             libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
             capnproto libcapnp-dev
+
+      - name: Set build name
+        id: buildname
+        run: |
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m)
+          echo "name=${OS}-${ARCH}-clang-unit-tsan-ninja" >> "$GITHUB_OUTPUT"
+
       - name: Run dashboard
         run: |
           BITCOIN_SOURCE_DIR="$PWD/bitcoin" \
             ctest -S "$PWD/cmake/cdash.cmake" -V \
             -DCDASH_PROFILE=unit-tsan \
+            -DCTEST_BUILD_NAME="${{ steps.buildname.outputs.name }}" \
             -DCDASH_MODEL=${{ github.event_name == 'schedule' && 'Nightly' || 'Experimental' }} \
             -DCDASH_SUBMIT=ON \
             -DCDASH_JOBS=2 \
@@ -113,6 +147,7 @@ jobs:
           repository: bitcoin/bitcoin
           path: bitcoin
           fetch-depth: 0
+
       - name: Install packages
         run: |
           sudo apt-get update
@@ -121,11 +156,20 @@ jobs:
             pkg-config python3 \
             libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
             capnproto libcapnp-dev
+
+      - name: Set build name
+        id: buildname
+        run: |
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m)
+          echo "name=${OS}-${ARCH}-clang-unit-valgrind-ninja" >> "$GITHUB_OUTPUT"
+
       - name: Run dashboard
         run: |
           BITCOIN_SOURCE_DIR="$PWD/bitcoin" \
             ctest -S "$PWD/cmake/cdash.cmake" -V \
             -DCDASH_PROFILE=unit-valgrind \
+            -DCTEST_BUILD_NAME="${{ steps.buildname.outputs.name }}" \
             -DCDASH_MODEL=${{ github.event_name == 'schedule' && 'Nightly' || 'Experimental' }} \
             -DCDASH_SUBMIT=ON \
             -DCDASH_JOBS=1 \
@@ -142,6 +186,7 @@ jobs:
           ref: refs/pull/35762/head
           path: bitcoin
           fetch-depth: 0
+
       - name: Install packages
         run: |
           sudo apt-get update
@@ -151,9 +196,18 @@ jobs:
             libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
             capnproto libcapnp-dev
           pip3 install --user 'pycapnp==2.2.1'
+
       - name: Previous-release binaries
         run: python3 test/get_previous_releases.py -t "$PWD/releases"
         working-directory: bitcoin
+
+      - name: Set build name
+        id: buildname
+        run: |
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m)
+          echo "name=${OS}-${ARCH}-clang-functional-ninja" >> "$GITHUB_OUTPUT"
+
       - name: Run dashboard
         env:
           PREVIOUS_RELEASES_DIR: ${{ github.workspace }}/bitcoin/releases
@@ -161,6 +215,7 @@ jobs:
           BITCOIN_SOURCE_DIR="$PWD/bitcoin" \
             ctest -S "$PWD/cmake/cdash.cmake" -V \
             -DCDASH_PROFILE=functional \
+            -DCTEST_BUILD_NAME="${{ steps.buildname.outputs.name }}" \
             -DCDASH_MODEL=${{ github.event_name == 'schedule' && 'Nightly' || 'Experimental' }} \
             -DCDASH_SUBMIT=ON \
             -DCTEST_SUBMIT_URL="$CTEST_SUBMIT_URL"

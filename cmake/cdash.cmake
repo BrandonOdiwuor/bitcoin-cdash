@@ -56,13 +56,17 @@ set(CTEST_UPDATE_VERSION_ONLY ON)
 find_program(CTEST_UPDATE_COMMAND git)
 site_name(CTEST_SITE)
 
-execute_process(
-  COMMAND git -C "${CTEST_SOURCE_DIRECTORY}" describe --tags --always --dirty
-  OUTPUT_VARIABLE _git_desc OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
-if(NOT _git_desc)
-  set(_git_desc "unknown")
+if(NOT CTEST_BUILD_NAME)
+  string(TOLOWER "${CMAKE_HOST_SYSTEM_NAME}" _os)
+
+  if(CDASH_PROFILE STREQUAL "unit-gcc")
+    set(_compiler "gcc")
+  else()
+    set(_compiler "clang")
+  endif()
+
+  set(CTEST_BUILD_NAME "${_os}-${CMAKE_HOST_SYSTEM_PROCESSOR}-${_compiler}-${CDASH_PROFILE}-ninja")
 endif()
-set(CTEST_BUILD_NAME "${CDASH_PROFILE}-${CMAKE_HOST_SYSTEM_NAME}-${_git_desc}")
 
 set(_submit_url "${CTEST_SUBMIT_URL}")
 if(NOT _submit_url)
