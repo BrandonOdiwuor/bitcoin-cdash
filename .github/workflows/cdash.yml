@@ -227,3 +227,49 @@ jobs:
             -DCDASH_MODEL=${{ github.event_name == 'schedule' && 'Nightly' || 'Experimental' }} \
             -DCDASH_SUBMIT=ON \
             -DCTEST_SUBMIT_URL="$CTEST_SUBMIT_URL"
+
+  functional-asan:
+    name: functional-asan
+    runs-on: ubuntu-26.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: bitcoin/bitcoin
+          ref: refs/pull/35762/head
+          path: bitcoin
+          fetch-depth: 0
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build clang \
+            pkg-config python3 python3-pip python3-zmq \
+            libevent-dev libboost-dev libsqlite3-dev libzmq3-dev \
+            capnproto libcapnp-dev
+          pip3 install --user 'pycapnp==2.2.1'
+
+      - name: Previous-release binaries
+        run: python3 test/get_previous_releases.py -t "$PWD/releases"
+        working-directory: bitcoin
+
+      - name: Set build name
+        id: buildname
+        run: |
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m)
+          echo "name=${OS}-${ARCH}-clang-functional-asan-ninja" >> "$GITHUB_OUTPUT"
+
+      - name: Run dashboard
+        env:
+          PREVIOUS_RELEASES_DIR: ${{ github.workspace }}/bitcoin/releases
+        run: |
+          BITCOIN_SOURCE_DIR="$PWD/bitcoin" \
+            ctest -S "$PWD/cmake/cdash.cmake" -V \
+            -DCDASH_PROFILE=functional-asan \
+            -DCTEST_BUILD_NAME="${{ steps.buildname.outputs.name }}" \
+            -DCDASH_MODEL=${{ github.event_name == 'schedule' && 'Nightly' || 'Experimental' }} \
+            -DCDASH_SUBMIT=ON \
+            -DCTEST_SUBMIT_URL="$CTEST_SUBMIT_URL"

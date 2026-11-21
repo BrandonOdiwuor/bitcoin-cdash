@@ -25,13 +25,13 @@ if(NOT DEFINED CDASH_COVERAGE_SUBMIT)
 endif()
 
 set(_profile_ok FALSE)
-foreach(_p unit unit-nowallet unit-asan unit-ubsan unit-tsan unit-valgrind unit-gcc unit-coverage functional)
+foreach(_p unit unit-nowallet unit-asan unit-ubsan unit-tsan unit-valgrind unit-gcc unit-coverage functional functional-asan)
   if(CDASH_PROFILE STREQUAL _p)
     set(_profile_ok TRUE)
   endif()
 endforeach()
 if(NOT _profile_ok)
-  message(FATAL_ERROR "CDASH_PROFILE must be unit, unit-nowallet, unit-asan, unit-ubsan, unit-tsan, unit-valgrind, unit-gcc, unit-coverage, or functional")
+  message(FATAL_ERROR "CDASH_PROFILE must be unit, unit-nowallet, unit-asan, unit-ubsan, unit-tsan, unit-valgrind, unit-gcc, unit-coverage, functional, or functional-asan")
 endif()
 
 if(NOT CDASH_MODEL STREQUAL "Experimental" AND NOT CDASH_MODEL STREQUAL "Nightly")
@@ -166,6 +166,23 @@ elseif(CDASH_PROFILE STREQUAL "functional")
     "-DCMAKE_C_COMPILER=clang"
     "-DCMAKE_CXX_COMPILER=clang++"
   )
+elseif(CDASH_PROFILE STREQUAL "functional-asan")
+  list(APPEND _opts
+    "-DCMAKE_C_COMPILER=clang"
+    "-DCMAKE_CXX_COMPILER=clang++"
+    "-DSANITIZERS=address"
+    "-DBUILD_TESTS=OFF"
+    "-DBUILD_FUNCTIONAL_TESTS=ON"
+    "-DENABLE_WALLET=ON"
+    "-DBUILD_DAEMON=ON"
+    "-DBUILD_BENCH=ON"
+    "-DBUILD_UTIL=ON"
+    "-DBUILD_UTIL_CHAINSTATE=ON"
+    "-DBUILD_WALLET_TOOL=ON"
+    "-DWITH_ZMQ=ON"
+    "-DENABLE_IPC=ON"
+    "-DBUILD_CLI=ON"
+  )
 endif()
 
 set(CTEST_CONFIGURE_COMMAND "${CMAKE_COMMAND} -S ${CTEST_SOURCE_DIRECTORY} -B ${CTEST_BINARY_DIRECTORY} -G Ninja")
@@ -250,7 +267,15 @@ elseif(CDASH_PROFILE STREQUAL "unit-valgrind")
   cdash_submit_part(MemCheck)
 elseif(CDASH_PROFILE STREQUAL "unit-coverage")
   run_unit_coverage()
-elseif(CDASH_PROFILE STREQUAL "functional")
+elseif(CDASH_PROFILE STREQUAL "functional" OR CDASH_PROFILE STREQUAL "functional-asan")
+  if(CDASH_PROFILE STREQUAL "functional-asan")
+    set(ENV{ASAN_OPTIONS}
+      "detect_leaks=1:abort_on_error=1:detect_stack_use_after_return=1")
+    if(EXISTS "${CTEST_SOURCE_DIRECTORY}/test/sanitizer_suppressions/lsan")
+      set(ENV{LSAN_OPTIONS}
+        "suppressions=${CTEST_SOURCE_DIRECTORY}/test/sanitizer_suppressions/lsan")
+    endif()
+  endif()
   ctest_test(
     INCLUDE_LABEL "functional"
     EXCLUDE_LABEL "extended"
